@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Dino Clone Sandbox</title>
+  <style>
+    :root {
+      --bg-color: #f7f7f7;
+      --text-color: #333333;
+      --accent-color: #838383;
+      --card-bg: #ffffff;
+    }
+    
+    /* Cyberpunk Theme */
+    [data-theme="cyberpunk"] {
+      --bg-color: #0d0e15;
+      --text-color: #00ffcc;
+      --accent-color: #ff0055;
+      --card-bg: #1a1c29;
+    }
+    
+    /* Glassmorphic Neon */
+    [data-theme="neon"] {
+      --bg-color: #03001e;
+      --text-color: #f39c12;
+      --accent-color: #ec407a;
+      --card-bg: rgba(255, 255, 255, 0.05);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.4s ease, color 0.4s ease;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100%;
+      max-width: 680px;
+      height: 220px;
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      transition: border-color 0.4s ease;
+    }
+
+    [data-theme="cyberpunk"] #game-container {
+      border: 1px solid var(--text-color);
+      box-shadow: 0 0 15px rgba(0, 255, 204, 0.2);
+    }
+    
+    [data-theme="neon"] #game-container {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    /* Controls Overlay for Mobile Layout */
+    #mobile-controls {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      width: 100%;
+      max-width: 680px;
+      margin-top: 15px;
+      gap: 15px;
+      padding: 0 10px;
+    }
+
+    .btn {
+      flex: 1;
+      height: 52px;
+      background: var(--card-bg);
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      color: var(--text-color);
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      touch-action: manipulation;
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+      background: var(--accent-color);
+      color: #ffffff;
+    }
+
+    [data-theme="cyberpunk"] .btn {
+      border: 1px solid var(--text-color);
+      box-shadow: 0 0 5px rgba(0, 255, 204, 0.1);
+    }
+    
+    [data-theme="neon"] .btn {
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(5px);
+    }
+
+    /* Diagnostics UI */
+    #dashboard {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 680px;
+      padding: 5px 12px;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      opacity: 0.85;
+      font-family: monospace;
+      margin-bottom: 5px;
+    }
+
+    .stat-badge {
+      background: rgba(0, 0, 0, 0.05);
+      padding: 3px 6px;
+      border-radius: 4px;
+    }
+    
+    [data-theme="cyberpunk"] .stat-badge, [data-theme="neon"] .stat-badge {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .restart-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      display: none;
+      backdrop-filter: blur(2px);
+      border-radius: 12px;
+    }
+
+    .restart-overlay h2 {
+      color: #ffffff;
+      font-size: 24px;
+      margin-bottom: 8px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .restart-overlay p {
+      color: #dddddd;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body data-theme="classic">
+
+  <div id="dashboard">
+    <div>FPS: <span id="fps-val">--</span> | HARI: <span id="day-cycle-label">PAGI</span></div>
+    <div>ACTIVE POOL: <span id="pool-val">0/5</span> | MEM STABILITY: <span id="mem-val">STABLE</span></div>
+  </div>
+
+  <!-- ARCADE POWER-UP METERS STATS HUD -->
+  <div id="hud-stats" style="display: flex; justify-content: space-between; width: 100%; max-width: 680px; padding: 6px 12px; font-size: 11px; font-weight: bold; font-family: monospace; letter-spacing: 0.5px; margin-bottom: 8px; border-radius: 8px; background: rgba(0, 0, 0, 0.05); border: 1px solid rgba(0, 0, 0, 0.05); color: var(--text-color); transition: border-color 0.4s ease;">
+    <div style="display: flex; gap: 12px; align-items: center;">
+      <span id="stat-hearts">❤️ x1</span>
+      <span id="stat-fuel">⛽ 0L</span>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center; font-size: 10px; overflow-x: auto;">
+      <span id="badge-jetpack" style="opacity: 0.25; filter: grayscale(100%);">🚀 JETPACK</span>
+      <span id="badge-speedster" style="opacity: 0.25; filter: grayscale(100%);">⚡ SPEEDSTER</span>
+      <span id="badge-boots" style="opacity: 0.25; filter: grayscale(100%);">🥾 BOOTS</span>
+      <span id="badge-skate" style="opacity: 0.25; filter: grayscale(100%);">🇲🇨 SKATE</span>
+    </div>
+  </div>
+
+  <div id="game-container">
+    <canvas id="dinoCanvas"></canvas>
+    <div id="restart-screen" class="restart-overlay">
+      <h2>GAME OVER</h2>
+      <p>Sentuh layar atau tekan SPASI / ARROW UP untuk restart</p>
+    </div>
+  </div>
+
+  <div id="mobile-controls">
+    <button id="btn-jump" class="btn" style="background: rgba(56, 189, 248, 0.08); border-color: rgba(56, 189, 248, 0.3);">LOMPAT / TERBANG<br><span style="font-size: 9px; opacity: 0.75;">(TAP LAYAR KIRI)</span></button>
+    <button id="btn-duck" class="btn" style="background: rgba(244, 63, 94, 0.08); border-color: rgba(244, 63, 94, 0.3);">TUNDUK / SLIDE<br><span style="font-size: 9px; opacity: 0.75;">(TAP LAYAR KANAN)</span></button>
+    <button id="btn-boost" class="btn" style="flex: 0.7; display: none; background: rgba(234, 179, 8, 0.15); border: 1.5px dashed #eab308; color: #eab308;">⚡ BOOST</button>
+    <button id="btn-restart" class="btn" style="flex: 0.5; display: none; background: #10b981; color: white;">RESTART</button>
+  </div>
+
+  <script>
+    // System Configurations set via URL parameter/hash for dynamic sandboxing
+    const urlParams = new URLSearchParams(window.location.hash.substring(1));
+    const devicePreset = urlParams.get('device') || 'balanced'; // low, balanced, high
+    const visualTheme = urlParams.get('theme') || 'classic'; // classic, cyberpunk, neon
+    const difficultyLevel = parseFloat(urlParams.get('difficulty') || '1.0');
+
+    document.body.setAttribute('data-theme', visualTheme);
+
+    // Dynamic Optimizations based on selected device (Samsung Z1 vs Xiaomi 17 Ultra)
+    const options = {
+      enableParticles: devicePreset !== 'low',
+      enableShadows: devicePreset === 'high',
+      physicsUpdateInterval: devicePreset === 'low' ? 1000/60 : 0, // static lock if low, delta if high
+      maxPooledObstacles: devicePreset === 'low' ? 3 : 6,
+      canvasResolutionScale: devicePreset === 'low' ? 1.0 : (window.devicePixelRatio || 2.0)
+    };
+
+    if (devicePreset === 'low') {
+      document.getElementById('mem-val').innerText = 'ULTRA-LITE';
+    } else if (devicePreset === 'high') {
+      document.getElementById('mem-val').innerText = 'MAX-DPI';
+    }
+
+    // Audio SFX Synthesizer using Web Audio API (Low Latency, fully modular)
+    let audioCtx = null;
+    function initSynth() {
+      try {
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) {
+            audioCtx = new AudioContextClass();
+          }
+        }
+      } catch (e) {
+        audioCtx = null;
+      }
+    }
+
+    function playBeep(freq, duration, type = 'square', endFreq = null) {
+      try {
+        if (!audioCtx) initSynth();
+        if (!audioCtx) return; // Silent pass if not supported
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        if (endFreq && endFreq > 0) {
+          osc.frequency.exponentialRampToValueAtTime(endFreq, audioCtx.currentTime + duration);
+        }
+        
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        // Fallback silently if Web Audio fails or blocked
+      }
+    }
+
+    // Canvas Initialization (Double Buffered coordinate logic)
+    const canvas = document.getElementById('dinoCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false }); // Disable alpha channel for raw painting speed!
+    
+    let baseWidth = 640;
+    let baseHeight = 200;
+
+    function resizeCanvas() {
+      const parent = canvas.parentElement;
+      const aspect = baseWidth / baseHeight;
+      const w = parent.clientWidth;
+      const h = parent.clientHeight;
+      
+      canvas.width = baseWidth * options.canvasResolutionScale;
+      canvas.height = baseHeight * options.canvasResolutionScale;
+      ctx.scale(options.canvasResolutionScale, options.canvasResolutionScale);
+      
+      // Paint first frame to avoid white flicker on load
+      ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg-color').trim();
+      ctx.fillRect(0, 0, baseWidth, baseHeight);
+    }
+    
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // COLOR DEFINITIONS RETRIEVED ONCE
+    function getColors() {
+      const styles = getComputedStyle(document.body);
+      let bg = (styles.getPropertyValue('--bg-color') || '').trim();
+      let text = (styles.getPropertyValue('--text-color') || '').trim();
+      let accent = (styles.getPropertyValue('--accent-color') || '').trim();
+      
+      // Safety fallbacks if WebView styles are not fully computed for custom variables
+      if (!bg) bg = (visualTheme === 'cyberpunk' ? '#0d0e15' : (visualTheme === 'neon' ? '#03001e' : '#f7f7f7'));
+      if (!text) text = (visualTheme === 'cyberpunk' ? '#00ffcc' : (visualTheme === 'neon' ? '#f39c12' : '#333333'));
+      if (!accent) accent = (visualTheme === 'cyberpunk' ? '#ff0055' : (visualTheme === 'neon' ? '#ec407a' : '#838383'));
+      
+      return { bg, text, accent };
+    }
+
+    // Vector drawing without images (Garbage Collector-free pixels)
+    // Pixel coordinates representation for beautiful retro dino rendering (Classic T-Rex)
+    const dinoSprite = {
+      standing: [
+        [0,0,0,0,0,0,1,1,1,1,1,1,0,0],
+        [0,0,0,0,0,1,1,1,1,1,1,1,1,0],
+        [0,0,0,0,0,1,1,1,0,1,1,1,1,1],
+        [0,0,0,0,0,1,1,1,1,1,1,1,1,1],
+        [0,0,0,0,0,1,1,1,1,1,1,1,0,0],
+        [0,0,0,0,0,1,1,1,1,1,0,0,0,0],
+        [1,0,0,0,1,1,1,1,1,1,0,0,0,0],
+        [1,1,0,1,1,1,1,1,1,1,1,1,0,0],
+        [1,1,1,1,1,1,1,1,1,1,1,1,0,0],
+        [0,1,1,1,1,1,1,1,1,1,1,0,0,0],
+        [0,0,1,1,1,1,1,1,1,1,0,0,0,0],
+        [0,0,0,1,1,1,1,1,1,0,0,0,0,0],
+        [0,0,0,0,1,1,1,1,0,1,0,0,0,0],
+        [0,0,0,0,1,0,0,1,0,0,1,0,0,0]
+      ],
+      ducking: [
+        [0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,0],
+        [0,0,0,0,0,0,0,1,1,1,1,1,0,1,1,1,1,1],
+        [0,0,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+        [1,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0],
+        [0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0],
+        [0,0,0,0,0,1,1,1,0,0,1,1,1,1,0,0,0,0],
+        [0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0]
+      ]
+    };
+
+    const cactusSpriteSmall = [
+      [0,0,1,1,0],
+      [0,1,1,1,1],
+      [1,1,1,1,0],
+      [1,1,1,1,0],
+      [0,1,1,1,0],
+      [0,1,1,1,0],
+      [0,1,1,1,0],
+      [0,1,1,1,0],
+      [0,1,1,1,0]
+    ];
+
+    const cactusSpriteLarge = [
+      [0,0,1,1,1,0,0],
+      [0,1,1,1,1,1,0],
+      [1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1],
+      [0,0,1,1,1,0,0],
+      [0,0,1,1,1,0,0],
+      [0,0,1,1,1,0,0],
+      [0,0,1,1,1,0,0],
+      [0,0,1,1,1,0,0],
+      [0,0,1,1,1,0,0]
+    ];
+
+    const birdSprite = [
+      [0,0,0,1,1,1,0,0,0,0],
+      [0,0,1,1,1,1,1,0,0,0],
+      [1,1,1,1,1,1,1,1,1,0],
+      [1,1,1,1,1,1,1,0,1,1],
+      [0,0,1,1,1,1,1,0,0,0],
+      [0,0,0,0,1,1,0,0,0,0]
+    ];
+
+    function drawPixelSprite(ctx, sprite, startX, startY, pixelSize, color) {
+      ctx.fillStyle = color;
+      const rows = sprite.length;
+      for (let r = 0; r < rows; r++) {
+        const cols = sprite[r].length;
+        for (let c = 0; c < cols; c++) {
+          if (sprite[r][c] === 1) {
+            // Integer coordinate casting to bypass sub-pixel rendering slowdown
+            ctx.fillRect(
+              Math.floor(startX + (c * pixelSize)), 
+              Math.floor(startY + (r * pixelSize)), 
+              Math.floor(pixelSize), 
+              Math.floor(pixelSize)
+            );
+          }
+        }
+      }
+    }
+
+    // Core Game State Variables
+    let baseSpeed = 5 * difficultyLevel;
+    let gameSpeed = baseSpeed;
+    let score = 0;
+    let highScore = 0;
+    try {
+      highScore = parseInt(localStorage.getItem('dino_highscore') || '0');
+      if (isNaN(highScore)) highScore = 0;
+    } catch (e) {
+      highScore = 0;
+    }
+    let isGameOver = false;
+    let isStarted = false;
+    let lastFrameTime = performance.now();
+
+    // Skateboard static pixels Representation
+    const skateboardSprite = [
+      [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [0,1,1,0,0,0,0,0,0,0,0,1,1,0]
+    ];
+    
+    // Dino state object (Zero structural instantiations during gameloop ticks)
+    const dino = {
+      x: 40,
+      y: 154,
+      width: 28,
+      height: 28,
+      isJumping: false,
+      isDucking: false,
+      velocity: 0,
+      gravity: 0.65,
+      pixelSize: 2,
+      animFrame: 0,
+      runCycle: 0,
+      
+      // Power-up states
+      fuel: 0,
+      hearts: 1,
+      hasJetpack: false,
+      hasSpeedster: false,
+      hasSpaceBoots: false,
+      hasSkateboard: false,
+      
+      isUsingJetpack: false,
+      isUsingSpeedster: false,
+      isInvulnerable: false,
+      invulnTimer: 0,
+
+      update(dt = 16.67) {
+        // Adjust gravity and physics values dynamically based on gear boots
+        let currentGravity = this.hasSpaceBoots ? 0.38 : 0.65;
+        
+        if (this.isUsingJetpack && this.fuel > 0) {
+          this.velocity = -4.2; // light ascending thrust force
+          this.y += this.velocity;
+          this.isJumping = true;
+          this.fuel = Math.max(0, this.fuel - (dt / 120));
+          
+          // Spawn backward fire flame particles
+          if (options.enableParticles && Math.random() < 0.45) {
+            triggerCrashExplosion(this.x + 2, this.y + 12, '#f97316');
+          }
+        } else if (this.isJumping) {
+          this.velocity += currentGravity;
+          this.y += this.velocity;
+          
+          let floorY = 154;
+          if (this.isDucking) {
+            floorY = 166;
+          }
+
+          if (this.y >= floorY) {
+            this.y = floorY;
+            this.velocity = 0;
+            this.isJumping = false;
+          }
+        }
+
+        // Speedster fuel usage
+        if (this.isUsingSpeedster && this.hasSpeedster) {
+          this.fuel = Math.max(0, this.fuel - (dt / 120));
+          if (this.fuel <= 0) {
+            this.isUsingSpeedster = false;
+          }
+          // Spawn beautiful electric speedster trail particles
+          if (options.enableParticles && Math.random() < 0.55) {
+            triggerCrashExplosion(this.x + 4, this.y + 18, '#f59f00');
+          }
+        }
+
+        // Invulnerable timer decrease
+        if (this.isInvulnerable) {
+          this.invulnTimer--;
+          if (this.invulnTimer <= 0) {
+            this.isInvulnerable = false;
+          }
+        }
+
+        // Run animation cycle (higher tick rate if speedster)
+        let rate = this.isUsingSpeedster ? 4 : 8;
+        this.runCycle++;
+        if (this.runCycle % rate === 0) {
+          this.animFrame = this.animFrame === 0 ? 1 : 0;
+        }
+
+        // Adjust dimensions dynamically depending on ducking & gear states
+        if (this.hasSkateboard) {
+          this.height = 18; // Shorter height naturally due to riding skateboard
+          this.width = 30;
+          if (this.y > 154) this.y = 154; // Keep perfectly on skate
+        } else if (this.isDucking && !this.isJumping) {
+          this.y = 166;
+          this.height = 16;
+          this.width = 36;
+        } else {
+          if (!this.isJumping) this.y = 154;
+          this.height = 28;
+          this.width = 28;
+        }
+      },
+
+      jump() {
+        if (!this.isJumping) {
+          this.isJumping = true;
+          // Space boots jumps higher, skateboard jumps standard
+          let force = this.hasSpaceBoots ? -9.8 : -8.5;
+          this.velocity = force;
+          playBeep(220, 0.12, 'sine', 600); // Sliding digital ascending arcade jump
+        }
+      },
+
+      duck(status) {
+        if (this.hasSkateboard) {
+          // Riding skateboard - ducking is passive/automatic
+          return;
+        }
+        this.isDucking = status;
+        if (status && !this.isJumping) {
+          this.y = 166;
+          this.height = 16;
+          this.width = 36;
+        } else if (!status) {
+          this.y = this.isJumping ? this.y : 154;
+          this.height = 28;
+          this.width = 28;
+        }
+      },
+
+      draw(colors) {
+        // Blink pattern if invulnerable
+        if (this.isInvulnerable && Math.floor(this.invulnTimer / 4) % 2 === 0) {
+          return;
+        }
+
+        let currentSprite = dinoSprite.standing;
+        let finalY = this.y;
+        
+        if (this.isDucking && !this.isJumping && !this.hasSkateboard) {
+          currentSprite = dinoSprite.ducking;
+        }
+
+        // Draw Dino
+        drawPixelSprite(ctx, currentSprite, this.x, finalY, this.pixelSize, colors.text);
+
+        // Render equipment: Jetpack on back
+        if (this.hasJetpack) {
+          // Draw tiny pixel backpack
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(this.x - 4, finalY + 8, 5, 12);
+          ctx.fillStyle = '#f97316';
+          if (this.isUsingJetpack) {
+            ctx.fillRect(this.x - 6, finalY + 20, 3, 6); // Fire nozzle details
+          }
+        }
+
+        // Render equipment: Skateboard under feet
+        if (this.hasSkateboard) {
+          drawPixelSprite(ctx, skateboardSprite, this.x, finalY + 24, 2, '#ca8a04');
+        }
+
+        // Render equipment: space boots glowing blue on feet
+        if (this.hasSpaceBoots) {
+          ctx.fillStyle = '#06b6d4';
+          ctx.fillRect(this.x + 4, finalY + 24, 6, 4);
+          ctx.fillRect(this.x + 14, finalY + 24, 6, 4);
+        }
+      }
+    };
+
+    // Strict Object Pooling for Obstacles to guarantee 0% Memory Garbage overhead
+    class PooledObstacle {
+      constructor() {
+        this.active = false;
+        this.x = 0;
+        this.y = 0;
+        this.width = 0;
+        this.height = 0;
+        this.type = 'cactus'; // 'cactus', 'cactus_large', 'bird'
+        this.speedScale = 1.0;
+        this.sprite = null;
+        this.pixelSize = 2;
+      }
+
+      spawn(x, type, speedFactor = 1.0) {
+        this.active = true;
+        this.x = x;
+        this.type = type;
+        this.speedScale = speedFactor;
+        
+        if (type === 'cactus') {
+          this.sprite = cactusSpriteSmall;
+          this.pixelSize = 2;
+          this.width = 5 * this.pixelSize;
+          this.height = 9 * this.pixelSize;
+          this.y = baseHeight - 30 - this.height; // Floor is at baseHeight - 30 (170)
+        } else if (type === 'cactus_large') {
+          this.sprite = cactusSpriteLarge;
+          this.pixelSize = 2.4;
+          this.width = 7 * this.pixelSize;
+          this.height = 11 * this.pixelSize;
+          this.y = baseHeight - 30 - this.height;
+        } else { // bird
+          this.sprite = birdSprite;
+          this.pixelSize = 2.0;
+          this.width = 10 * this.pixelSize;
+          this.height = 6 * this.pixelSize;
+          // Random heights for birds
+          const options = [110, 140];
+          this.y = options[Math.floor(Math.random() * options.length)];
+        }
+      }
+
+      update() {
+        if (!this.active) return;
+        this.x -= gameSpeed * this.speedScale;
+        if (this.x + this.width < 0) {
+          this.active = false; // Returned instantly to pool
+        }
+      }
+
+      draw(colors) {
+        if (!this.active) return;
+        drawPixelSprite(ctx, this.sprite, this.x, this.y, this.pixelSize, colors.accent);
+      }
+    }
+
+    const obstaclePool = [];
+    for (let i = 0; i < options.maxPooledObstacles; i++) {
+      obstaclePool.push(new PooledObstacle());
+    }
+
+    function getUnusedObstacle() {
+      for (let i = 0; i < obstaclePool.length; i++) {
+        if (!obstaclePool[i].active) return obstaclePool[i];
+      }
+      return null; // Pool full (prevent overflow leak)
+    }
+
+    // Dynamic Starfield Particles (only if enabled, pool-designed)
+    class Particle {
+      constructor() {
+        this.active = false;
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.life = 0;
+        this.color = '';
+      }
+
+      spawn(x, y, color) {
+        this.active = true;
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() - 0.5) * 5;
+        this.vy = (Math.random() - 1.2) * 4;
+        this.life = 1.0;
+        this.color = color;
+      }
+
+      update() {
+        if (!this.active) return;
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vy += 0.15; // Particle Gravity
+        this.life -= 0.045;
+        if (this.life <= 0) this.active = false;
+      }
+
+      draw() {
+        if (!this.active) return;
+        ctx.fillStyle = this.color;
+        ctx.globalAlpha = this.life;
+        ctx.fillRect(Math.floor(this.x), Math.floor(this.y), 3, 3);
+        ctx.globalAlpha = 1.0;
+      }
+    }
+
+    const particlePool = [];
+    if (options.enableParticles) {
+      for (let i = 0; i < 20; i++) {
+        particlePool.push(new Particle());
+      }
+    }
+
+    function triggerCrashExplosion(x, y, color) {
+      if (!options.enableParticles) return;
+      let count = 0;
+      for (let i = 0; i < particlePool.length; i++) {
+        if (!particlePool[i].active) {
+          particlePool[i].spawn(x, y, color);
+          count++;
+          if (count >= 12) break;
+        }
+      }
+    }
+
+    class PooledItem {
+      constructor() {
+        this.active = false;
+        this.x = 0;
+        this.y = 0;
+        this.width = 18;
+        this.height = 18;
+        this.type = 'fuel';
+        this.label = '⛽';
+        this.isBad = false;
+      }
+
+      spawn(x, y, type) {
+        this.active = true;
+        this.x = x;
+        this.y = y;
+        this.type = type;
+        this.isBad = type.startsWith('del_') || type === 'throw_fuel' || type === 'earthboots' || type === 'heartdown';
+        
+        switch (type) {
+          case 'jetpack': this.label = '🚀'; break;
+          case 'fuel': this.label = '⛽'; break;
+          case 'speedster': this.label = '⚡'; break;
+          case 'spaceboots': this.label = '🥾'; break;
+          case 'skateboard': this.label = '🛹'; break;
+          case 'heartup': this.label = '❤️'; break;
+          
+          case 'del_jetpack': this.label = '🚫'; break;
+          case 'del_speedster': this.label = '⚠️'; break;
+          case 'throw_fuel': this.label = '🗑️'; break;
+          case 'earthboots': this.label = '🪨'; break;
+          case 'del_skateboard': this.label = '❌'; break;
+          case 'heartdown': this.label = '💔'; break;
+        }
+      }
+
+      update() {
+        if (!this.active) return;
+        this.x -= gameSpeed;
+        if (this.x + this.width < 0) {
+          this.active = false;
+        }
+      }
+
+      draw(colors) {
+        if (!this.active) return;
+        ctx.save();
+        ctx.beginPath();
+        ctx.fillStyle = this.isBad ? 'rgba(239, 68, 68, 0.9)' : 'rgba(16, 185, 129, 0.9)';
+        ctx.strokeStyle = colors.text;
+        ctx.lineWidth = 1;
+        ctx.arc(this.x + 9, this.y + 9, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(this.label, this.x + 9, this.y + 10);
+        ctx.restore();
+      }
+    }
+
+    const itemPool = [];
+    for (let i = 0; i < 6; i++) {
+      itemPool.push(new PooledItem());
+    }
+
+    function getUnusedItem() {
+      for (let i = 0; i < itemPool.length; i++) {
+        if (!itemPool[i].active) return itemPool[i];
+      }
+      return null;
+    }
+
+    // Colors list for Day-Night score-based cycle shift
+    const cyclesColors = [
+      { bg: '#f7f7f7', text: '#222222', accent: '#7a7a7a', label: 'PAGI ( putih )' },
+      { bg: '#fffbeb', text: '#1e293b', accent: '#ca8a04', label: 'SIANG ( kuning pastel )' },
+      { bg: '#fff7ed', text: '#9a3412', accent: '#ea580c', label: 'FAJAR/MAGHRIB ( oranye )' },
+      { bg: '#0f172a', text: '#38bdf8', accent: '#64748b', label: 'MALAM ( hitam )' }
+    ];
+
+    let currentCycle = -1;
+    function updateDynamicTheme() {
+      let cycleIdx = 0;
+      if (isFinite(score) && !isNaN(score)) {
+        cycleIdx = Math.floor(score / 500) % 4;
+      }
+      if (isNaN(cycleIdx) || cycleIdx < 0 || cycleIdx >= cyclesColors.length) {
+        cycleIdx = 0;
+      }
+      if (cycleIdx !== currentCycle) {
+        currentCycle = cycleIdx;
+        const theme = cyclesColors[cycleIdx] || cyclesColors[0];
+        document.body.style.setProperty('--bg-color', theme.bg);
+        document.body.style.setProperty('--text-color', theme.text);
+        document.body.style.setProperty('--accent-color', theme.accent);
+        document.body.style.setProperty('--card-bg', cycleIdx === 3 ? '#1e293b' : '#ffffff');
+        
+        document.getElementById('day-cycle-label').innerText = theme.label.toUpperCase();
+        playBeep(523.25, 0.22, 'triangle'); // C5 note
+      }
+    }
+
+    function updateHUD() {
+      document.getElementById('stat-hearts').innerText = `❤️ x${dino.hearts}`;
+      document.getElementById('stat-fuel').innerText = `⛽ ${Math.floor(dino.fuel)}L`;
+      
+      const bj = document.getElementById('badge-jetpack');
+      bj.style.opacity = dino.hasJetpack ? '1.0' : '0.25';
+      bj.style.filter = dino.hasJetpack ? 'none' : 'grayscale(100%)';
+      bj.style.textDecoration = dino.hasJetpack ? 'none' : 'line-through';
+      
+      const bs = document.getElementById('badge-speedster');
+      bs.style.opacity = dino.hasSpeedster ? '1.0' : '0.25';
+      bs.style.filter = dino.hasSpeedster ? 'none' : 'grayscale(100%)';
+      bs.style.textDecoration = dino.hasSpeedster ? 'none' : 'line-through';
+      
+      const bb = document.getElementById('badge-boots');
+      bb.style.opacity = dino.hasSpaceBoots ? '1.0' : '0.25';
+      bb.style.filter = dino.hasSpaceBoots ? 'none' : 'grayscale(100%)';
+      bb.style.textDecoration = dino.hasSpaceBoots ? 'none' : 'line-through';
+      
+      const bk = document.getElementById('badge-skate');
+      bk.style.opacity = dino.hasSkateboard ? '1.0' : '0.25';
+      bk.style.filter = dino.hasSkateboard ? 'none' : 'grayscale(100%)';
+      bk.style.textDecoration = dino.hasSkateboard ? 'none' : 'line-through';
+      
+      document.getElementById('btn-boost').style.display = dino.hasSpeedster ? 'block' : 'none';
+    }
+
+    // Background decoration clouds
+    let clouds = [
+      { x: 120, y: 50, speed: 0.3 },
+      { x: 340, y: 30, speed: 0.25 },
+      { x: 580, y: 65, speed: 0.35 }
+    ];
+
+    function drawClouds(colors) {
+      ctx.fillStyle = colors.accent;
+      ctx.globalAlpha = 0.25;
+      for (let i = 0; i < clouds.length; i++) {
+        let c = clouds[i];
+        c.x -= c.speed;
+        if (c.x < -60) c.x = baseWidth + 20;
+        ctx.fillRect(Math.floor(c.x), Math.floor(c.y), 35, 8);
+        ctx.fillRect(Math.floor(c.x + 8), Math.floor(c.y - 6), 20, 6);
+      }
+      ctx.globalAlpha = 1.0;
+    }
+
+    // Dynamic obstacle/items spawn ticker
+    let nextSpawnTimer = 0;
+    let itemSpawnTimer = 100;
+
+    function resetGame() {
+      // Clear pool
+      for (let i = 0; i < obstaclePool.length; i++) {
+        obstaclePool[i].active = false;
+      }
+      for (let i = 0; i < itemPool.length; i++) {
+        itemPool[i].active = false;
+      }
+      if (options.enableParticles) {
+        for (let i = 0; i < particlePool.length; i++) {
+          particlePool[i].active = false;
+        }
+      }
+
+      dino.y = 154;
+      dino.isJumping = false;
+      dino.isDucking = false;
+      dino.velocity = 0;
+      
+      // Resets dynamic items to baseline
+      dino.hearts = 1;
+      dino.fuel = 0;
+      dino.hasJetpack = false;
+      dino.hasSpeedster = false;
+      dino.hasSpaceBoots = false;
+      dino.hasSkateboard = false;
+      dino.isUsingJetpack = false;
+      dino.isUsingSpeedster = false;
+      dino.isInvulnerable = false;
+      dino.invulnTimer = 0;
+      
+      gameSpeed = 5 * difficultyLevel;
+      score = 0;
+      nextSpawnTimer = 40;
+      itemSpawnTimer = 150;
+      isGameOver = false;
+      isStarted = true;
+      lastFrameTime = performance.now();
+      
+      document.getElementById('restart-screen').style.display = 'none';
+      document.getElementById('btn-restart').style.display = 'none';
+      
+      initSynth();
+      playBeep(440, 0.1, 'triangle'); // Start beep
+    }
+
+    // Crash Collision check algorithm - High-efficiency AABB (Axis-Aligned Bounding Box)
+    function checkCollision(objA, objB) {
+      return (
+        objA.x < objB.x + objB.width &&
+        objA.x + objA.width > objB.x &&
+        objA.y < objB.y + objB.height &&
+        objA.y + objA.height > objB.y
+      );
+    }
+
+    // Performance Stats calculations
+    let lastTime = performance.now();
+    let frameCount = 0;
+    let fps = 60;
+    const fpsVal = document.getElementById('fps-val');
+    const poolVal = document.getElementById('pool-val');
+
+    function updateStats() {
+      const now = performance.now();
+      frameCount++;
+      if (now - lastTime >= 1000) {
+        fps = Math.round((frameCount * 1000) / (now - lastTime));
+        fpsVal.innerText = isNaN(fps) ? '--' : fps;
+        frameCount = 0;
+        lastTime = now;
+      }
+
+      let activeCount = 0;
+      for (let i = 0; i < obstaclePool.length; i++) {
+        if (obstaclePool[i].active) activeCount++;
+      }
+      poolVal.innerText = `${activeCount}/${obstaclePool.length}`;
+    }
+
+    // Core High-Performance rendering loop (Target 60FPS or 120FPS matches monitor)
+    function tick(now) {
+      if (!now) now = performance.now();
+      let elapsed = now - lastFrameTime;
+      // Safety guards: handle negative offsets, page suspend, freeze intervals, or epoch mismatches safely
+      if (elapsed < 0 || elapsed > 1000 || isNaN(elapsed)) {
+        elapsed = 16.67;
+      }
+      const dt = Math.min(elapsed, 100);
+      lastFrameTime = now;
+
+      updateStats();
+      
+      // Theme shift dynamically per score
+      updateDynamicTheme();
+      
+      // Update inventory UI indicators
+      updateHUD();
+
+      const colors = getColors();
+
+      ctx.fillStyle = colors.bg;
+      ctx.fillRect(0, 0, baseWidth, baseHeight);
+
+      // Environment: Static Ground Line
+      ctx.strokeStyle = colors.accent;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, 182);
+      ctx.lineTo(baseWidth, 182);
+      ctx.stroke();
+
+      if (isStarted && !isGameOver) {
+        // Calculate dynamic multipliers based on current score bracket
+        const rawScoreBracket = Math.floor(score / 500);
+        // Cap the bracket for calculations to prevent overflow.
+        const scoreBracket = Math.min(rawScoreBracket, 80); 
+        // Increases by 50% (x1.5) every 500 points instead of doubling (x2) to keep the balance!
+        let scoreMultiplier = Math.pow(1.5, scoreBracket); // x1, x1.5, x2.25, x3.375...
+        if (dino.isUsingSpeedster) {
+          scoreMultiplier *= 2; // Speedster doubles the current multiplier! (e.g. x16 -> x32)
+        }
+        const speedMultiplier = 1.0 + scoreBracket * 0.25; // increases 0.25 every 500 points: 1.0, 1.25, 1.5, 1.75, 2.0...
+        
+        // Handle Score
+        const prevScoreFloor = Math.floor(score);
+        const baseIncrement = 0.15;
+        score += baseIncrement * scoreMultiplier;
+        const currentScoreFloor = Math.floor(score);
+        
+        // Classic Google Dino 100-point double beep milestone cue
+        if (currentScoreFloor > 0 && currentScoreFloor % 100 === 0 && prevScoreFloor !== currentScoreFloor) {
+          playBeep(880, 0.08, 'square');
+          setTimeout(() => {
+            playBeep(987.77, 0.1, 'square');
+          }, 110);
+        }
+
+        // Adaptive Game Speed formula based on adaptive speed multiplier & active speedster speed
+        const activeMultiplier = dino.isUsingSpeedster ? 1.6 : 1.0;
+        gameSpeed = 5 * difficultyLevel * speedMultiplier * activeMultiplier;
+        
+        // Spawn scheduler
+        nextSpawnTimer--;
+        if (nextSpawnTimer <= 0) {
+          const unused = getUnusedObstacle();
+          if (unused) {
+            const types = ['cactus', 'cactus_large', 'bird'];
+            let chosen = types[Math.floor(Math.random() * types.length)];
+            
+            if (score < 100 && chosen === 'bird') {
+              chosen = 'cactus';
+            }
+
+            unused.spawn(baseWidth + 10, chosen, 1.0);
+            nextSpawnTimer = 75 + Math.random() * 85;
+          }
+        }
+
+        // Items spawn scheduler
+        itemSpawnTimer--;
+        if (itemSpawnTimer <= 0) {
+          const unused = getUnusedItem();
+          if (unused) {
+            const isBadType = Math.random() < 0.35;
+            let type = 'fuel';
+            if (isBadType) {
+              const types = ['del_jetpack', 'del_speedster', 'throw_fuel', 'earthboots', 'del_skateboard', 'heartdown'];
+              type = types[Math.floor(Math.random() * types.length)];
+            } else {
+              const types = ['jetpack', 'fuel', 'speedster', 'spaceboots', 'skateboard', 'heartup'];
+              type = types[Math.floor(Math.random() * types.length)];
+            }
+            const yOffset = Math.random() < 0.4 ? 90 : 150;
+            unused.spawn(baseWidth + 20, yOffset, type);
+          }
+          itemSpawnTimer = 160 + Math.random() * 220;
+        }
+      }
+
+      drawClouds(colors);
+
+      // Updates & Collisions for Pooled Items
+      for (let i = 0; i < itemPool.length; i++) {
+        const item = itemPool[i];
+        if (item.active) {
+          if (!isGameOver && isStarted) item.update();
+          item.draw(colors);
+          
+          if (!isGameOver && isStarted && checkCollision(dino, item)) {
+            item.active = false;
+            
+            // Audio pick sound effect
+            if (item.isBad) {
+              playBeep(220, 0.22, 'sawtooth', 110);
+            } else {
+              playBeep(587.33, 0.1, 'sine', 880);
+            }
+            
+            // Power-ups and debuffs implementation
+            switch (item.type) {
+              case 'jetpack':
+                dino.hasJetpack = true;
+                dino.fuel = Math.min(2000, dino.fuel + 100);
+                break;
+              case 'fuel':
+                dino.fuel = Math.min(2000, dino.fuel + 500);
+                break;
+              case 'speedster':
+                dino.hasSpeedster = true;
+                dino.fuel = Math.min(2000, dino.fuel + 100);
+                break;
+              case 'spaceboots':
+                dino.hasSpaceBoots = true;
+                break;
+              case 'skateboard':
+                dino.hasSkateboard = true;
+                break;
+              case 'heartup':
+                dino.hearts++;
+                break;
+              case 'del_jetpack':
+                dino.hasJetpack = false;
+                dino.isUsingJetpack = false;
+                break;
+              case 'del_speedster':
+                dino.hasSpeedster = false;
+                dino.isUsingSpeedster = false;
+                break;
+              case 'throw_fuel':
+                dino.fuel = 0;
+                break;
+              case 'earthboots':
+                dino.hasSpaceBoots = false;
+                break;
+              case 'del_skateboard':
+                dino.hasSkateboard = false;
+                break;
+              case 'heartdown':
+                if (dino.hearts >= 2) {
+                  dino.hearts--;
+                }
+                break;
+            }
+          }
+        }
+      }
+
+      // Physics, Updates & Draw Callbacks for Pooled Obstacles
+      for (let i = 0; i < obstaclePool.length; i++) {
+        const obs = obstaclePool[i];
+        if (obs.active) {
+          if (!isGameOver && isStarted) obs.update();
+          obs.draw(colors);
+
+          // Handle collision detection
+          if (!isGameOver && isStarted && checkCollision(dino, obs)) {
+            if (dino.isUsingSpeedster) {
+              // Destroy obstacle while Speedster Boost is active
+              obs.active = false;
+              triggerCrashExplosion(obs.x + 10, obs.y + 10, '#f59f00');
+              playBeep(880, 0.08, 'sine');
+              score += 20;
+              continue;
+            }
+
+            if (dino.isInvulnerable) {
+              continue;
+            }
+
+            // Multi-heart rescue logic
+            if (dino.hearts >= 2) {
+              dino.hearts--;
+              dino.isInvulnerable = true;
+              dino.invulnTimer = 90; // invulnerable frames duration
+              obs.active = false;
+              playBeep(220, 0.25, 'sawtooth');
+              triggerCrashExplosion(dino.x + 14, dino.y + 14, colors.accent);
+            } else {
+              triggerCrashExplosion(dino.x + 14, dino.y + 14, colors.accent);
+              isGameOver = true;
+              playBeep(180, 0.38, 'sawtooth', 40);
+              
+              setTimeout(() => {
+                playBeep(90, 0.25, 'triangle');
+              }, 150);
+              
+              const fScore = Math.floor(score);
+              if (fScore > highScore) {
+                highScore = fScore;
+                try {
+                  localStorage.setItem('dino_highscore', highScore.toString());
+                } catch (e) {}
+              }
+
+              document.getElementById('restart-screen').style.display = 'flex';
+              document.getElementById('btn-restart').style.display = 'flex';
+            }
+          }
+        }
+      }
+
+      if (options.enableParticles) {
+        for (let i = 0; i < particlePool.length; i++) {
+          const part = particlePool[i];
+          if (part.active) {
+            if (!isGameOver && isStarted) part.update();
+            part.draw();
+          }
+        }
+      }
+
+      // Physics & State Draw: Rex
+      if (isStarted && !isGameOver) {
+        dino.update(dt);
+      }
+      dino.draw(colors);
+
+      // Render Score Board Retro Numbers
+      ctx.fillStyle = colors.text;
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(`HI ${String(highScore).padStart(5, '0')}  ${String(Math.floor(score)).padStart(5, '0')}`, baseWidth - 15, 22);
+
+      // Display Tutorial on clean slate
+      if (!isStarted) {
+        ctx.fillStyle = colors.text;
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('TAP BAGIAN KIRI UNTUK JUMP, BAGIAN KANAN UNTUK DUCK / RESTART', baseWidth / 2, 95);
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    // Trigger Game on Clean Canvas Click
+    canvas.addEventListener('click', (e) => {
+      if (!isStarted) {
+        resetGame();
+      } else if (isGameOver) {
+        resetGame();
+      } else {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        if (clickX < rect.width / 2) {
+          if (dino.hasJetpack && dino.fuel > 0) {
+            dino.isUsingJetpack = true;
+          } else {
+            dino.jump();
+          }
+        } else {
+          dino.duck(true);
+          setTimeout(() => dino.duck(false), 200);
+        }
+      }
+    });
+
+    // Mobile Input Bindings (Super responsive split-screen touch zones)
+    const btnJump = document.getElementById('btn-jump');
+    const btnDuck = document.getElementById('btn-duck');
+    const btnRestart = document.getElementById('btn-restart');
+    const btnBoost = document.getElementById('btn-boost');
+
+    // Make original buttons directly functional, including the full document split touch below
+    btnJump.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (!isStarted || isGameOver) {
+        resetGame();
+      } else {
+        if (dino.hasJetpack && dino.fuel > 0) {
+          dino.isUsingJetpack = true;
+        } else {
+          dino.jump();
+        }
+      }
+    }, {passive: false});
+
+    btnJump.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      dino.isUsingJetpack = false;
+    }, {passive: false});
+
+    btnDuck.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (isStarted && !isGameOver) {
+        dino.duck(true);
+      }
+    }, {passive: false});
+
+    btnDuck.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      dino.duck(false);
+    }, {passive: false});
+
+    btnBoost.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (dino.hasSpeedster && dino.fuel > 0) {
+        dino.isUsingSpeedster = true;
+      }
+    }, {passive: false});
+
+    btnBoost.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      dino.isUsingSpeedster = false;
+    }, {passive: false});
+
+    btnRestart.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      resetGame();
+    }, {passive: false});
+
+    // Touch Split screen covering the whole viewport for maximum ergonomics
+    document.addEventListener('touchstart', (e) => {
+      if (e.target.closest('button')) return; // Ignore on buttons click
+      e.preventDefault();
+      
+      if (!isStarted || isGameOver) {
+        resetGame();
+        return;
+      }
+
+      const touch = e.touches[0];
+      const screenWidth = window.innerWidth;
+      if (touch.clientX < screenWidth / 2) {
+        if (dino.hasJetpack && dino.fuel > 0) {
+          dino.isUsingJetpack = true;
+        } else {
+          dino.jump();
+        }
+      } else {
+        dino.duck(true);
+      }
+    }, { passive: false });
+
+    document.addEventListener('touchend', (e) => {
+      if (e.target.closest('button')) return;
+      e.preventDefault();
+      
+      const screenWidth = window.innerWidth;
+      let holdLeft = false;
+      let holdRight = false;
+      
+      for (let i = 0; i < e.touches.length; i++) {
+        if (e.touches[i].clientX < screenWidth / 2) {
+          holdLeft = true;
+        } else {
+          holdRight = true;
+        }
+      }
+
+      if (!holdLeft) dino.isUsingJetpack = false;
+      if (!holdRight) dino.duck(false);
+    }, { passive: false });
+
+    // Keyboard bindings for Desktop fallback
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.code === 'ArrowUp') {
+        e.preventDefault();
+        if (!isStarted || isGameOver) {
+          resetGame();
+        } else {
+          if (dino.hasJetpack && dino.fuel > 0) {
+            dino.isUsingJetpack = true;
+          } else {
+            dino.jump();
+          }
+        }
+      } else if (e.code === 'ArrowDown') {
+        e.preventDefault();
+        if (isStarted && !isGameOver) {
+          dino.duck(true);
+        }
+      } else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyZ') {
+        e.preventDefault();
+        if (dino.hasSpeedster && dino.fuel > 0) {
+          dino.isUsingSpeedster = true;
+        }
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'Space' || e.code === 'ArrowUp') {
+        dino.isUsingJetpack = false;
+      } else if (e.code === 'ArrowDown') {
+        dino.duck(false);
+      } else if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyZ') {
+        dino.isUsingSpeedster = false;
+      }
+    });
+
+    // Listen for custom settings message from Parent React component
+    window.addEventListener('message', (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.action === 'update_settings') {
+          // Re-route to same hash
+          window.location.hash = `#device=${payload.device}&theme=${payload.theme}&difficulty=${payload.difficulty}`;
+          window.location.reload();
+        }
+      } catch (err) {}
+    });
+
+    // Start rendering frame Loop
+    requestAnimationFrame(tick);
+  </script>
+</body>
+</html>
