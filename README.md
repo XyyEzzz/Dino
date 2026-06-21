@@ -51,6 +51,7 @@ Build System: Highly responsive Web View container integrations.
 
 📊 Performance Benchmark Insights
 Device Preset	Screen Resolution Scale	Particle Systems	Target Frames Per Second (FPS)
+
 Ultra-Lite (Low)	1.0x Normalized DPI	Disabled	60 FPS (Fixed Intervals)
 
 Balanced	Dynamic Auto-scaling	Moderate	60+ FPS
