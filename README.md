@@ -1,5 +1,4 @@
 # Dino Clone #
-
 # An advanced, high-performance web-based recreation of the classic Chrome Dinosaur game. This project is engineered with custom retro gameplay systems, procedural audio synthesis, dynamic environment themes, and rigorous memory optimizations to achieve stable 60+ FPS rendering across a wide range of mobile and desktop hardware.
 
 # 🚀 Key Engineering & Architecture Features
